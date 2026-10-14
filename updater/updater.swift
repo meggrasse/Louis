@@ -7,11 +7,34 @@
 
 import WidgetKit
 import SwiftUI
+import SwiftData
+
+// TODO: This needs to be shared in a library
+@Model
+class Meal {
+    @Attribute(.unique) var date: Date
+    
+    init(date: Date = .init()) {
+        self.date = date
+    }
+}
+
+struct Store {
+    private static let config = ModelConfiguration(groupContainer: .identifier("group.com.grasse.louis"))
+    static let container: ModelContainer = {
+        do { return try ModelContainer(for: Meal.self, configurations: config) }
+        catch {
+            // TODO: You should still be able to see the record view.
+            // Also there should be some error UI
+            fatalError("Failed to create App Group ModelContainer: \(error)")
+        }
+    }()
+}
 
 // TODO: Update casing of all file names
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry {
-        .init(date: .init())
+        .init(date: .init(), mealDate: nil)
     }
     
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
@@ -19,32 +42,31 @@ struct Provider: TimelineProvider {
         let entry: Entry
         
         guard context.isPreview else { return }
-        entry = .init(date: date)
+        entry = .init(date: date, mealDate: nil)
         
         completion(entry)
     }
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
-        // Create a timeline entry for "now."
-        let date = Date()
-        let entry = Entry(date: date)
-        
-        
-        // Create a date that's 15 minutes in the future.
-        guard let update = Calendar.current.date(
-            byAdding: .minute,
-            value: 15,
-            to: date
+        var descriptor = FetchDescriptor<Meal>(
+            sortBy: [
+                .init(\.date, order: .reverse) // TODO
+            ]
         )
-        // TODO: is this allowed?
-        else { return }
+        descriptor.fetchLimit = 1
+        
+        let meal = try? ModelContext(Store.container).fetch(descriptor).first
+        
+        let date = Date.now
+        let entry = Entry(date: date, mealDate: meal?.date)
         
         
         // Create the timeline with the entry and a reload policy with the date
         // for the next update.
         let timeline = Timeline(
             entries: [entry],
-            policy: .after(update)
+            // We reload when the user submits in the main app.
+            policy: .never
         )
         
         
@@ -58,6 +80,7 @@ struct Provider: TimelineProvider {
 
 struct Entry: TimelineEntry {
     let date: Date
+    let mealDate: Date?
 }
 
 struct MainView: View {
@@ -65,10 +88,17 @@ struct MainView: View {
 
     var body: some View {
         VStack {
-            Text("Time:")
-            Text(entry.date, style: .time)
+            Text("Last Meal:")
+            if let mealDate = entry.mealDate {
+                Text(mealDate, style: .date)
+                Text(mealDate, style: .time)
+            }
+            else {
+                Text("None")
+            }
+            
         }
-        .containerBackground(.red.gradient, for: .widget)
+        .containerBackground(.green.gradient, for: .widget)
     }
 }
 
@@ -92,5 +122,16 @@ struct Updater: Widget {
 #Preview(as: .systemMedium) {
     Updater()
 } timeline: {
-    Entry(date: .now)
+    Entry(
+        date: .now,
+        mealDate: Calendar.current.date(
+            from: DateComponents(
+                year: 2026,
+                month: 10,
+                day: 14,
+                hour: 9,
+                minute: 0
+            )
+        )!
+    )
 }
