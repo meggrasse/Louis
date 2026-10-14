@@ -6,14 +6,26 @@
 //
 
 import SwiftUI
+import SwiftData
+
+@Model
+class Meal {
+    @Attribute(.unique) var date: Date
+    
+    init(date: Date = .init()) {
+        self.date = date
+    }
+}
 
 struct ContentView: View {
     var body: some View {
         VStack {
-            Image(systemName: "globe")
-                .imageScale(.large)
-                .foregroundStyle(.tint)
-            Text("Hello, world!")
+            Button {
+                // Debug description is shown in UTC
+                print(Date.now)
+            } label: {
+                Text("Feed")
+            }
         }
         .padding()
     }
@@ -22,3 +34,5 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
+
+// I probably want to be able to visualize the data in the app as well. I.e. a records view
