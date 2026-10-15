@@ -9,28 +9,6 @@ import WidgetKit
 import SwiftUI
 import SwiftData
 
-// TODO: This needs to be shared in a library
-@Model
-class Meal {
-    @Attribute(.unique) var date: Date
-    
-    init(date: Date = .init()) {
-        self.date = date
-    }
-}
-
-struct Store {
-    private static let config = ModelConfiguration(groupContainer: .identifier("group.com.grasse.louis"))
-    static let container: ModelContainer = {
-        do { return try ModelContainer(for: Meal.self, configurations: config) }
-        catch {
-            // TODO: You should still be able to see the record view.
-            // Also there should be some error UI
-            fatalError("Failed to create App Group ModelContainer: \(error)")
-        }
-    }()
-}
-
 // TODO: Update casing of all file names
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry {
@@ -50,7 +28,7 @@ struct Provider: TimelineProvider {
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
         var descriptor = FetchDescriptor<Meal>(
             sortBy: [
-                .init(\.date, order: .reverse) // TODO
+                .init(\.startDate, order: .reverse) // TODO
             ]
         )
         descriptor.fetchLimit = 1
@@ -58,7 +36,7 @@ struct Provider: TimelineProvider {
         let meal = try? ModelContext(Store.container).fetch(descriptor).first
         
         let date = Date.now
-        let entry = Entry(date: date, mealDate: meal?.date)
+        let entry = Entry(date: date, mealDate: meal?.startDate)
         
         
         // Create the timeline with the entry and a reload policy with the date

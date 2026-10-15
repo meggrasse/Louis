@@ -1,0 +1,47 @@
+//
+//  Models.swift
+//  louis
+//
+//  Created by Meg Grasse on 10/15/26.
+//
+
+import SwiftData
+import Foundation
+
+enum Brand: Hashable, Identifiable, Codable {
+    
+    case royalCanin(RoyalCaninFlavor)
+    enum RoyalCaninFlavor: String, CaseIterable, Codable {
+        case chicken
+        case beef
+        case fish
+    }
+    static var allCases: [Brand] {
+        RoyalCaninFlavor.allCases.map { .royalCanin($0) }
+    }
+    var label: String {
+        switch self {
+        case .royalCanin(let flavor): "Royal Canin \(flavor.rawValue.capitalized)"
+        }
+    }
+    var id: Self { self }
+}
+
+@Model
+class Meal {
+    @Attribute(.unique) var startDate: Date
+    var endDate: Date?
+    var startWeight: Double
+    var endWeight: Double?
+    var brand: Brand
+    var waterVolume: Double // liters
+    
+    init(startDate: Date, endDate: Date? = nil, startWeight: Double, endWeight: Double? = nil, brand: Brand, waterVolume: Double) {
+        self.startDate = startDate
+        self.endDate = endDate
+        self.startWeight = startWeight
+        self.endWeight = endWeight
+        self.brand = brand
+        self.waterVolume = waterVolume
+    }
+}
