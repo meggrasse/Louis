@@ -22,6 +22,7 @@ struct RecordView: View {
                     Text("Weight (kg): \(String(describing: meal.endWeight))")
                     Text("Brand: \(meal.brand.label)")
                     Text("Water: \(meal.waterVolume) l")
+                    Text("Fresh: \(meal.fresh)")
                 }
                 .border(Color.gray)
                 .padding()

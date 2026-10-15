@@ -25,8 +25,9 @@ struct FormView: View {
     }
     
     @State private var brand: Brand?
-    @State private var waterQuantity: Double = 0
+    @State private var waterQuantity: Double? = 0
     @State private var waterUnits: UnitVolume = .tablespoons
+    @State private var fresh = true
     
     var body: some View {
         VStack {
@@ -55,6 +56,8 @@ struct FormView: View {
                 }
             }
             
+            Toggle("Fresh?", isOn: $fresh)
+            
             Button {
                 // Close the previous meal, if there is one
                 if openMeals.count > 1 {
@@ -67,13 +70,14 @@ struct FormView: View {
                 }
                 // TODO hanlde if one isn't found
                 
-                let volume = waterUnits.converter.baseUnitValue(fromValue: waterQuantity)
+                let volume = waterUnits.converter.baseUnitValue(fromValue: waterQuantity ?? 0)
                 if let newWeight, let brand {
-                    let newMeal = Meal(startDate: now, startWeight: newWeight, brand: brand, waterVolume: volume)
+                    let newMeal = Meal(startDate: now, startWeight: newWeight, brand: brand, waterVolume: volume, fresh: fresh)
                     context.insert(newMeal)
                 }
                 else {
                     // TODO: error handling. this is actually interesting as to how to best
+                    // Just hit this missing brand!!
                     // handle individual missing fields
                 }
                 // TODO hanlde if nothing appeared
@@ -92,6 +96,8 @@ struct FormView: View {
                 // reset state
                 oldWeight = nil
                 newWeight = nil
+                waterUnits = .tablespoons
+                waterQuantity = 1
                 focus = nil
                 
             } label: {
@@ -100,7 +106,10 @@ struct FormView: View {
         }
         // TODO: test with persistent db
         .onAppear {
-            brand = openMeals.first?.brand
+            if let open = openMeals.first {
+                brand = open.brand
+                fresh = !open.fresh
+            }
         }
         .padding()
     }

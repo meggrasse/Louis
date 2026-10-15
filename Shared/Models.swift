@@ -35,13 +35,15 @@ class Meal {
     var endWeight: Double?
     var brand: Brand
     var waterVolume: Double // liters
+    var fresh: Bool
     
-    init(startDate: Date, endDate: Date? = nil, startWeight: Double, endWeight: Double? = nil, brand: Brand, waterVolume: Double) {
+    init(startDate: Date, endDate: Date? = nil, startWeight: Double, endWeight: Double? = nil, brand: Brand, waterVolume: Double, fresh: Bool) {
         self.startDate = startDate
         self.endDate = endDate
         self.startWeight = startWeight
         self.endWeight = endWeight
         self.brand = brand
         self.waterVolume = waterVolume
+        self.fresh = fresh
     }
 }
