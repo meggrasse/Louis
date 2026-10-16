@@ -8,7 +8,7 @@
 import SwiftData
 
 struct Store {
-    //    private static let config = ModelConfiguration(groupContainer: .identifier("group.com.grasse.louis"))
+//        private static let config = ModelConfiguration(groupContainer: .identifier("group.com.grasse.louis"))
     // TODO just developemnet
     private static let config = ModelConfiguration(isStoredInMemoryOnly: true)
     static let container: ModelContainer = {

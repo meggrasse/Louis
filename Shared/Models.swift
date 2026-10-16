@@ -16,15 +16,15 @@ enum Brand: Hashable, Identifiable, Codable {
         case beef
         case fish
     }
-    static var allCases: [Brand] {
-        RoyalCaninFlavor.allCases.map { .royalCanin($0) }
-    }
+    var id: Self { self }
+    
+    // MARK: - API
+    
     var label: String {
         switch self {
-        case .royalCanin(let flavor): "Royal Canin \(flavor.rawValue.capitalized)"
+        case .royalCanin(let flavor): "\(flavor.rawValue.capitalized)"
         }
     }
-    var id: Self { self }
 }
 
 @Model
@@ -46,4 +46,9 @@ class Meal {
         self.waterVolume = waterVolume
         self.fresh = fresh
     }
+}
+
+extension Meal {
+    static let weightUnit = UnitMass.kilograms
+    static let waterVolumeUnit = UnitVolume.liters
 }

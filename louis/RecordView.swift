@@ -17,11 +17,11 @@ struct RecordView: View {
             ForEach(meals) { meal in
                 VStack {
                     Text("Meal Start: \(meal.startDate, format: .dateTime.day().month().hour().minute())")
-                    Text("Weight (kg): \(meal.startWeight)")
+                    Text("Start Weight: \(meal.startWeight) \(Meal.weightUnit.symbol)")
                     Text("Meal End: \(String(describing: meal.endDate?.formatted(.dateTime.day().month().hour().minute())))")
-                    Text("Weight (kg): \(String(describing: meal.endWeight))")
+                    Text("End Weight: \(meal.startWeight) \(Meal.weightUnit.symbol)")
                     Text("Brand: \(meal.brand.label)")
-                    Text("Water: \(meal.waterVolume) l")
+                    Text("Water: \(meal.waterVolume) \(Meal.waterVolumeUnit.symbol)")
                     Text("Fresh: \(meal.fresh)")
                 }
                 .border(Color.gray)
