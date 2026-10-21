@@ -8,6 +8,31 @@
 import WidgetKit
 import SwiftUI
 import SwiftData
+import AppIntents
+
+struct Serve: AppIntent {
+    static var title: LocalizedStringResource = "Serve"
+    static var description = IntentDescription("Insert serving associated with current meal.")
+    
+    func perform() async throws -> some IntentResult {
+        var descriptor = FetchDescriptor<Meal>(
+            predicate: #Predicate { $0.endDate == nil }
+        )
+        descriptor.fetchLimit = 1
+        
+        let context = ModelContext(Store.container)
+        guard let meal = try? context.fetch(descriptor).first
+        else {
+            // TODO: handle error - also is this the right thing to return
+            return .result()
+        }
+        
+//        context.insert(Serving(meal: meal, startDate: Date.now, pets: false))
+        try context.save()
+        return .result()
+    }
+    
+}
 
 // TODO: Update casing of all file names
 struct Provider: TimelineProvider {
@@ -70,6 +95,9 @@ struct MainView: View {
             if let mealDate = entry.mealDate {
                 Text(mealDate, style: .date)
                 Text(mealDate, style: .time)
+                Button(intent: Serve()) {
+                    Image(systemName: "spoon.serving")
+                }
             }
             else {
                 Text("None")

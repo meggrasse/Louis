@@ -24,6 +24,14 @@ struct RecordView: View {
                     Text("Water: \(meal.waterVolume) \(Meal.waterVolumeUnit.symbol)")
                     Text("Fresh: \(meal.fresh)")
                 }
+                ForEach(meal.servings) { serving in
+                    VStack {
+                        Text("Serving start: \(serving.startDate)")
+//                        Text("Bowl location: \(serving.bowlLocation)")
+//                        Text("louis location: \(serving.louisLocation.label)")
+                        Text("pets: \(serving.pets)")
+                    }
+                }
                 .border(Color.gray)
                 .padding()
             }

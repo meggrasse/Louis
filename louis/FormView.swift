@@ -25,6 +25,12 @@ struct FormView: View {
     @State private var waterQuantity: Double? = WaterDefaults.quatity
     @State private var waterUnits = WaterDefaults.units
     @State private var fresh = true
+    @State private var bowlLocation: BowlLocation = .hall
+    @State private var pets: Bool = true
+//    @State private var eating = true
+//    @State private var kind: LouisLocation.Means.Kind? = .selfInitiated
+//    @State private var sleeping: Bool?
+    @State private var louisLocation: LouisLocation = .here(.selfInitiated)
     
     @FocusState private var focus: FormField?
     
@@ -71,9 +77,9 @@ struct FormView: View {
     var body: some View {
         NavigationStack {
             ZStack {
-                Rectangle().fill(.green.gradient)
-                    .opacity(0.6)
-                    .ignoresSafeArea()
+//                Rectangle().fill(.green.gradient)
+//                    .opacity(0.6)
+//                    .ignoresSafeArea()
                 Form {
                     Section {
                         LastMealView(finishWeight: $finishWeight, focusBinding: $focus, openMeal: openMeals.first)
@@ -96,6 +102,15 @@ struct FormView: View {
                             waterUnits: $waterUnits,
                             startWeight: $startWeight,
                             focusBinding: $focus
+                        )
+                        .card()
+                    }
+                    
+                    Section(header: Text("Serving")) {
+                        ServingView(
+                            bowlLocation: $bowlLocation,
+                            pets: $pets,
+                            louisLocation: $louisLocation
                         )
                         .card()
                     }
@@ -181,14 +196,25 @@ struct FormView: View {
     
     func recordNewMeal(weight: Double) {
         let volume = waterUnits.converter.baseUnitValue(fromValue: waterQuantity ?? 0)
+        let now = Date.now
         let newMeal = Meal(
-            startDate: Date.now,
+            startDate: now,
             startWeight: weight,
             brand: brand,
             waterVolume: volume,
             fresh: fresh
         )
+        
+        let serving = Serving(
+            meal: newMeal,
+            startDate: Date.now,
+            pets: pets,
+            bowlLocation: bowlLocation,
+            louisLocation: louisLocation
+        )
+        
         context.insert(newMeal)
+        context.insert(serving)
     }
     
     func write() {
@@ -268,6 +294,75 @@ struct CurrentMealView: View {
     }
 }
 
+struct ServingView: View {
+    @Binding var bowlLocation: BowlLocation
+    @Binding var pets: Bool
+    @Binding var louisLocation: LouisLocation
+//    @Binding var eating: Bool
+//    @Binding var kind: LouisLocation.Means.Kind?
+//    @Binding var sleeping: Bool?
+    var body: some View {
+        LabeledContent {
+            Picker("Bowl Location", selection: $bowlLocation) {
+                ForEach(BowlLocation.allCases) {
+                    Image(systemName: $0.icon).tag($0)
+                }
+            }
+            .pickerStyle(.segmented)
+        } label: {
+//            Image(systemName: "location")
+            Text("Where?")
+        }
+        
+        LabeledContent {
+            HStack {
+                Toggle(isOn: $louisLocation.here) {
+                    Label("Here", systemImage: "location")
+                }
+                .toggleStyle(.button)
+                .labelStyle(.iconOnly)
+                
+                Picker("Kind", selection: $louisLocation.kind) {
+                    ForEach(LouisLocation.Means.Kind.allCases) {
+                        Image(systemName: $0.icon).tag($0)
+                    }
+                }
+                .disabled(!louisLocation.here)
+                .pickerStyle(.segmented)
+                
+                Toggle(
+                    isOn: Binding(
+                        get: { louisLocation.sleeping == true},
+                        set: { louisLocation.sleeping = $0 }
+                    )
+                ) {
+                    Label("Bowl", systemImage: "moon.zzz")
+                }
+                .toggleStyle(.button)
+                .labelStyle(.iconOnly)
+                .disabled(louisLocation.kind == nil || louisLocation.kind == .selfInitiated)
+            }
+        } label: {
+            Text("Here?")
+        }
+        
+        Toggle(isOn: $pets) {
+            Text("Pets?")
+        }
+        
+//        .onChange(of: louisLocation.here) { _, newValue in
+//            guard !newValue else { return }
+//            louisLocation.k = nil
+//        }
+//        .onChange(of: transportKind) { _, newValue in
+//            if newValue == nil || newValue == .agentic {
+//                sleeping = nil
+//            }
+//        }
+    }
+
+}
+
 extension Optional<FormView.AlertState> {
     var title: String { self?.title ?? "" }
 }
@@ -281,6 +376,84 @@ extension View {
 extension Brand {
     fileprivate static var allCases: [Brand] {
         RoyalCaninFlavor.allCases.map { .royalCanin($0) }
+    }
+}
+
+extension BowlLocation {
+    fileprivate var label: String {
+        "\(self.rawValue.capitalized)"
+    }
+}
+
+extension LouisLocation {
+    var here: Bool {
+        get {
+            switch self {
+            case .here: true
+            default: false
+            }
+        }
+        set {
+            guard here != newValue else { return }
+            if newValue {
+                self = .here(.selfInitiated)
+            } else {
+                self = .missing
+            }
+        }
+    }
+    
+    var kind: Means.Kind? {
+        get {
+            switch self {
+            case .here(let means): means.kind
+            case .missing: nil
+            }
+        }
+        set {
+            guard kind != newValue else { return }
+            guard let newValue else {
+                self = .missing
+                return
+            }
+            switch newValue {
+            case .selfInitiated: self = .here(.selfInitiated)
+            case .provisioned: self = .here(.provisioned(sleeping: sleeping == true))
+            case .carried: self = .here(.carried(sleeping: sleeping == true))
+            }
+        }
+    }
+    
+    var sleeping: Bool? {
+        get {
+            switch self {
+            case .here(.provisioned(sleeping: let sleeping)):
+                sleeping
+            case .here(.carried(sleeping: let sleeping)):
+                sleeping
+            default: nil
+            }
+        }
+        set {
+            guard sleeping != newValue else { return }
+            guard let newValue else {
+                assertionFailure("`LouisLocation.Means.Kind.sleeping` shouldn't be set to nil by the UI.")
+                return
+            }
+            switch self {
+            case .missing:
+                assertionFailure("`LouisLocation.Means.Kind.sleeping` was set from a `.missing` state.")
+            case .here(let means):
+                switch means {
+                case .selfInitiated:
+                    assertionFailure("`LouisLocation.Means.Kind.sleeping` was set from a `.selfInitiated` state.")
+                case .provisioned(_):
+                    self = .here(.provisioned(sleeping: newValue))
+                case .carried(_):
+                    self = .here(.carried(sleeping: newValue))
+                }
+            }
+        }
     }
 }
 
