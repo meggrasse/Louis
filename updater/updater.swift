@@ -15,29 +15,57 @@ struct Serve: AppIntent {
     static var description = IntentDescription("Insert serving associated with current meal.")
     
     func perform() async throws -> some IntentResult {
-        var descriptor = FetchDescriptor<Meal>(
+        var mealDescriptor = FetchDescriptor<Meal>(
             predicate: #Predicate { $0.endDate == nil }
         )
-        descriptor.fetchLimit = 1
+        mealDescriptor.fetchLimit = 1
         
         let context = ModelContext(Store.container)
-        guard let meal = try? context.fetch(descriptor).first
+        guard let meal = try? context.fetch(mealDescriptor).first
         else {
             // TODO: handle error - also is this the right thing to return
             return .result()
         }
         
-//        context.insert(Serving(meal: meal, startDate: Date.now, pets: false))
+        let louisLocation: LouisLocation
+        if ServingDefault.carried {
+            louisLocation = .here(.carried(sleeping: false))
+        }
+        else {
+            louisLocation = .here(.provisioned(sleeping: false))
+        }
+        
+        let serving = Serving(meal: meal, startDate: Date.now, pets: false, bowlLocation: .hall, louisLocation: louisLocation)
+        context.insert(serving)
+
         try context.save()
         return .result()
     }
     
 }
 
+enum ServingDefault {
+    static let defaults = UserDefaults(suiteName: "group.com.grasse.louis")!
+    
+    static var carried: Bool {
+        get { defaults.bool(forKey: "serving.carried") }
+        set { defaults.set(newValue, forKey: "serving.carried") }
+    }
+    // same for sleeping, pets, and location (store BowlLocation.rawValue)
+}
+
+struct ToggleCarried: AppIntent {
+    static let title: LocalizedStringResource = "Toggle Serving Carried"
+    func perform() async throws -> some IntentResult {
+        ServingDefault.carried.toggle()
+        return .result()
+    }
+}
+
 // TODO: Update casing of all file names
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry {
-        .init(date: .init(), mealDate: nil)
+        .init(date: .init(), mealDate: nil, servingCount: nil, servingCarried: false)
     }
     
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
@@ -45,12 +73,13 @@ struct Provider: TimelineProvider {
         let entry: Entry
         
         guard context.isPreview else { return }
-        entry = .init(date: date, mealDate: nil)
+        entry = .init(date: date, mealDate: nil, servingCount: nil, servingCarried: false)
         
         completion(entry)
     }
     
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> Void) {
+        let context = ModelContext(Store.container)
         var descriptor = FetchDescriptor<Meal>(
             sortBy: [
                 .init(\.startDate, order: .reverse) // TODO
@@ -58,11 +87,10 @@ struct Provider: TimelineProvider {
         )
         descriptor.fetchLimit = 1
         
-        let meal = try? ModelContext(Store.container).fetch(descriptor).first
+        let meal = try? context.fetch(descriptor).first
         
         let date = Date.now
-        let entry = Entry(date: date, mealDate: meal?.startDate)
-        
+        let entry = Entry(date: date, mealDate: meal?.startDate, servingCount: meal?.servings.count, servingCarried: ServingDefault.carried)
         
         // Create the timeline with the entry and a reload policy with the date
         // for the next update.
@@ -84,10 +112,16 @@ struct Provider: TimelineProvider {
 struct Entry: TimelineEntry {
     let date: Date
     let mealDate: Date?
+    let servingCount: Int?
+    let servingCarried: Bool
 }
 
 struct MainView: View {
     var entry: Provider.Entry
+    @State var bowlLocation: BowlLocation = .hall
+    @State var carried: Bool = false
+    @State var sleeping: Bool = false
+    @State var pets: Bool = false
 
     var body: some View {
         VStack {
@@ -95,8 +129,32 @@ struct MainView: View {
             if let mealDate = entry.mealDate {
                 Text(mealDate, style: .date)
                 Text(mealDate, style: .time)
-                Button(intent: Serve()) {
-                    Image(systemName: "spoon.serving")
+                Text("Servings: \(String(describing: entry.servingCount))")
+                Picker("Bowl Location", selection: $bowlLocation) {
+                    ForEach(BowlLocation.allCases) {
+                        Image(systemName: $0.icon).tag($0)
+                    }
+                }
+                .pickerStyle(.segmented)
+                HStack {
+                    Toggle(isOn: entry.servingCarried, intent: ToggleCarried()) {
+                        Label("Carried", systemImage: LouisLocation.Means.Kind.carried.icon)
+                    }
+                    .toggleStyle(.button)
+                    .labelStyle(.iconOnly)
+                    Toggle(isOn: $sleeping) {
+                        Label("Carried", systemImage: "moon.zzz")
+                    }
+                    .toggleStyle(.button)
+                    .labelStyle(.iconOnly)
+                    Toggle(isOn: $pets) {
+                        Label("Carried", systemImage: "pawprint")
+                    }
+                    .toggleStyle(.button)
+                    .labelStyle(.iconOnly)
+                    Button(intent: Serve()) {
+                        Image(systemName: "spoon.serving")
+                    }
                 }
             }
             else {
@@ -138,6 +196,8 @@ struct Updater: Widget {
                 hour: 9,
                 minute: 0
             )
-        )!
+        )!,
+        servingCount: 2,
+        servingCarried: false
     )
 }

@@ -332,7 +332,7 @@ struct ServingView: View {
                 
                 Toggle(
                     isOn: Binding(
-                        get: { louisLocation.sleeping == true},
+                        get: { louisLocation.sleeping == true },
                         set: { louisLocation.sleeping = $0 }
                     )
                 ) {
