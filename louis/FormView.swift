@@ -15,6 +15,11 @@ enum FormField {
     case waterQuantity
 }
 
+struct WaterDefaults {
+    static let quatity: Double = 1
+    static let units = UnitVolume.tablespoons
+}
+
 struct FormView: View {
     @Environment(\.modelContext) private var context
     @Query(filter: #Predicate<Meal> { $0.endDate == nil }) private var openMeals: [Meal]
@@ -22,22 +27,14 @@ struct FormView: View {
     @State private var finishWeight: Double?
     @State private var startWeight: Double?
     @State private var brand: Brand = .royalCanin(.chicken)
-    @State private var waterQuantity: Double? = WaterDefaults.quatity
-    @State private var waterUnits = WaterDefaults.units
+    @State private var waterQuantity: Double? = WaterDefaults.quatity // TextField's need optional bindings
+    @State private var waterUnits = WaterDefaults.units.symbol
     @State private var fresh = true
-    @State private var bowlLocation: BowlLocation = .hall
-    @State private var pets: Bool = true
-//    @State private var eating = true
-//    @State private var kind: LouisLocation.Means.Kind? = .selfInitiated
-//    @State private var sleeping: Bool?
-    @State private var louisLocation: LouisLocation = .here(.selfInitiated)
+//    @State private var bowlLocation: BowlLocation = .hall
+//    @State private var pets: Bool = true
+//    @State private var louisLocation: LouisLocation = .here(.selfInitiated)
     
     @FocusState private var focus: FormField?
-    
-    struct WaterDefaults {
-        static let quatity: Double = 1
-        static let units = UnitVolume.tablespoons
-    }
     
     enum AlertState {
         case missingAllWeights
@@ -96,6 +93,7 @@ struct FormView: View {
                     
                     Section(header: Text("New Meal")) {
                         CurrentMealView(
+                            editing: false,
                             brand: $brand,
                             fresh: $fresh,
                             waterQuantity: $waterQuantity,
@@ -106,14 +104,14 @@ struct FormView: View {
                         .card()
                     }
                     
-                    Section(header: Text("Serving")) {
-                        ServingView(
-                            bowlLocation: $bowlLocation,
-                            pets: $pets,
-                            louisLocation: $louisLocation
-                        )
-                        .card()
-                    }
+//                    Section(header: Text("Serving")) {
+//                        ServingView(
+//                            bowlLocation: $bowlLocation,
+//                            pets: $pets,
+//                            louisLocation: $louisLocation
+//                        )
+//                        .card()
+//                    }
                 }
                 .onAppear {
                     guard openMeals.count <= 1
@@ -159,6 +157,8 @@ struct FormView: View {
         }
     }
     
+    // TODO: warn if end weight is greater than start weight
+    
     func save() {
         switch (openMeals.first, finishWeight, startWeight) {
         case (_, .none, .none):
@@ -174,7 +174,7 @@ struct FormView: View {
             // starting a new one. This is an unexpected case so warn the user.
             alertState = .onlyUpdateLastMeal(meal, weight)
         case let (meal?, finishWeight?, startWeight?):
-            // Normal case: all fields are provided (and last mean was open).
+            // Normal case: all fields are provided (and last meal was open).
             recordLastMeal(meal: meal, weight: finishWeight)
             recordNewMeal(weight: startWeight)
             write()
@@ -187,6 +187,7 @@ struct FormView: View {
             // This should be protected against in the UI.
             assertionFailure("User shouldn't be able to provide last meal weight when last meal isn't open.")
         }
+        // TODO: rename to start/end weight
     }
     
     func recordLastMeal(meal: Meal, weight: Double) {
@@ -195,26 +196,26 @@ struct FormView: View {
     }
     
     func recordNewMeal(weight: Double) {
-        let volume = waterUnits.converter.baseUnitValue(fromValue: waterQuantity ?? 0)
         let now = Date.now
         let newMeal = Meal(
             startDate: now,
             startWeight: weight,
             brand: brand,
-            waterVolume: volume,
+            waterQuantity: waterQuantity ?? 0,
+            waterUnits: .init(symbol: waterUnits),
             fresh: fresh
         )
         
-        let serving = Serving(
-            meal: newMeal,
-            startDate: Date.now,
-            pets: pets,
-            bowlLocation: bowlLocation,
-            louisLocation: louisLocation
-        )
+//        let serving = Serving(
+//            meal: newMeal,
+//            startDate: Date.now,
+//            pets: pets,
+//            bowlLocation: bowlLocation,
+//            louisLocation: louisLocation
+//        )
         
         context.insert(newMeal)
-        context.insert(serving)
+//        context.insert(serving)
     }
     
     func write() {
@@ -234,7 +235,7 @@ struct FormView: View {
         finishWeight = nil
         startWeight = nil
         waterQuantity = WaterDefaults.quatity
-        waterUnits = WaterDefaults.units
+        waterUnits = WaterDefaults.units.symbol
         focus = nil
     }
 }
@@ -252,28 +253,37 @@ struct LastMealView: View {
 }
 
 struct CurrentMealView: View {
+    var editing: Bool // could be a create/edit enum
+//    @Binding var startTime: Date
     @Binding var brand: Brand
     @Binding var fresh: Bool
     @Binding var waterQuantity: Double?
-    @Binding var waterUnits: UnitVolume
+    @Binding var waterUnits: String // Someting around UnitVolume equality seems to be messed up.
     @Binding var startWeight: Double?
     var focusBinding: FocusState<FormField?>.Binding
     
     var body: some View {
+        
+//        if editing {
+//            LabeledContent {
+//            DatePicker("Start date", selection: $startTime)
+//            } label: {
+//                Text("Start time")
+//            }
+//        }
+        
+        if !editing {
+            TextField("Start weight", value : $startWeight, format: .number)
+                .focused(focusBinding, equals: .startWeight)
+                .keyboardType(.decimalPad)
+        }
+        
         Picker("Brand", selection: $brand) {
             ForEach(Brand.allCases) {
                 Text($0.label).tag($0)
             }
         }
         .pickerStyle(.segmented)
-        
-        Toggle(isOn: $fresh) {
-            Text("New?")
-        }
-        
-        TextField("Start weight", value : $startWeight, format: .number)
-            .focused(focusBinding, equals: .startWeight)
-            .keyboardType(.decimalPad)
         
         LabeledContent {
             HStack {
@@ -282,14 +292,18 @@ struct CurrentMealView: View {
                     .keyboardType(.decimalPad)
                     .multilineTextAlignment(.trailing)
                 Picker("Unit", selection: $waterUnits) {
-                    Text(UnitVolume.tablespoons.symbol).tag(UnitVolume.tablespoons)
-                    Text(UnitVolume.teaspoons.symbol).tag(UnitVolume.teaspoons)
+                    Text(UnitVolume.tablespoons.symbol).tag(UnitVolume.tablespoons.symbol)
+                    Text(UnitVolume.teaspoons.symbol).tag(UnitVolume.teaspoons.symbol)
                 }
                 .pickerStyle(.segmented)
             }
         } label: {
             Image(systemName: ("waterbottle"))
                 .font(.headline)
+        }
+        
+        Toggle(isOn: $fresh) {
+            Text("Fresh?")
         }
     }
 }
@@ -368,7 +382,7 @@ extension Optional<FormView.AlertState> {
 }
 
 extension View {
-    fileprivate func card() -> some View {
+    func card() -> some View {
         listRowBackground(Rectangle().fill(.ultraThinMaterial))
     }
 }
@@ -460,6 +474,10 @@ extension LouisLocation {
 extension Double {
     var formattedWeight: String {
         formatted(.number.precision(.fractionLength(2)))
+    }
+    
+    var formattedVolume: String {
+        formatted(.number.precision(.fractionLength(0)))
     }
 }
 

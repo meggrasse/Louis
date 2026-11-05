@@ -117,44 +117,56 @@ class Meal {
     var startWeight: Double
     var endWeight: Double?
     var brand: Brand
-    var waterVolume: Double
+//    var waterVolume: Double
+    var waterQuanitity: Double
+    @Attribute(.transformable(by: VolumeUnitTransformer.self)) var waterUnits: UnitVolume // need to remember units for editing
     var fresh: Bool
     
-    @Relationship(deleteRule: .cascade, inverse: \Serving.meal)
-    var servings: [Serving] = []
+//    @Relationship(deleteRule: .cascade, inverse: \Serving.meal)
+//    var servings: [Serving] = []
     
-    init(startDate: Date, endDate: Date? = nil, startWeight: Double, endWeight: Double? = nil, brand: Brand, waterVolume: Double, fresh: Bool) {
+    init(
+        startDate: Date,
+        endDate: Date? = nil,
+        startWeight: Double,
+        endWeight: Double? = nil,
+        brand: Brand,
+        waterQuantity: Double,
+        waterUnits: UnitVolume,
+        fresh: Bool
+    ) {
         self.startDate = startDate
         self.endDate = endDate
         self.startWeight = startWeight
         self.endWeight = endWeight
         self.brand = brand
-        self.waterVolume = waterVolume
+        self.waterQuanitity = waterQuantity
+        self.waterUnits = waterUnits
         self.fresh = fresh
     }
 }
 
-@Model
-class Serving {
-    var startDate: Date
-    var pets: Bool
-    var meal: Meal
-    var bowlLocation: BowlLocation
-    var louisLocation: LouisLocation
-    
-    init(meal: Meal, startDate: Date, pets: Bool, bowlLocation: BowlLocation, louisLocation: LouisLocation) {
-        self.meal = meal
-        self.startDate = startDate
-        self.pets = pets
-        self.bowlLocation = bowlLocation
-        self.louisLocation = louisLocation
-    }
-    
-}
+//@Model
+//class Serving {
+//    var startDate: Date
+//    var pets: Bool
+//    var meal: Meal
+//    var bowlLocation: BowlLocation
+//    var louisLocation: LouisLocation
+//    
+//    init(meal: Meal, startDate: Date, pets: Bool, bowlLocation: BowlLocation, louisLocation: LouisLocation) {
+//        self.meal = meal
+//        self.startDate = startDate
+//        self.pets = pets
+//        self.bowlLocation = bowlLocation
+//        self.louisLocation = louisLocation
+//    }
+//    
+//}
 
 extension Meal {
     static let weightUnit = UnitMass.kilograms
-    static let waterVolumeUnit = UnitVolume.liters
+//    static let waterVolumeUnit = UnitVolume.liters
 }
 
 // TODO:
@@ -182,3 +194,49 @@ extension Meal {
 //        }
 //    }
 //}
+
+//extension UnitVolume: Codable {
+//    public init(from decoder: Decoder) throws {
+//        
+//    }
+//    
+//    public func encode(to encoder: any Encoder) throws {
+//        <#code#>
+//    }
+//    
+//    enum CodingKeys: String, CodingKey {
+//        case latitude
+//        case longitude
+//        case additionalInfo
+//    }
+//}
+
+//struct CodableVolumeUnit: Codable {
+//    let volumeUnit: UnitVolume
+//}
+
+// Also better treatment here? https://developer.apple.com/documentation/coredata/handling-different-data-types-in-core-data
+class VolumeUnitTransformer: ValueTransformer {
+    override class func transformedValueClass() -> AnyClass {
+        // Per CoreData documentation (which SwiftData is based on).
+        return UnitVolume.self
+    }
+    
+    override class func allowsReverseTransformation() -> Bool {
+        return true
+    }
+    
+    override func transformedValue(_ value: Any?) -> Any? {
+        guard let unitVolume = value as? UnitVolume else { return nil }
+        // TODO: is there a better way to handle the error
+        return Data(unitVolume.symbol.utf8) as NSData // `utf8` is compact and suitable for our use case.
+    }
+    
+    override func reverseTransformedValue(_ value: Any?) -> Any? {
+        guard
+            let data = value as? NSData,
+            let symbol = String(data: data as Data, encoding: .utf8) // TODO: consolidate?
+        else { return nil }
+        return UnitVolume(symbol: symbol)
+    }
+}

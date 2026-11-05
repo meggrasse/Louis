@@ -35,8 +35,8 @@ struct Serve: AppIntent {
             louisLocation = .here(.provisioned(sleeping: false))
         }
         
-        let serving = Serving(meal: meal, startDate: Date.now, pets: false, bowlLocation: .hall, louisLocation: louisLocation)
-        context.insert(serving)
+//        let serving = Serving(meal: meal, startDate: Date.now, pets: false, bowlLocation: .hall, louisLocation: louisLocation)
+//        context.insert(serving)
 
         try context.save()
         return .result()
@@ -65,7 +65,8 @@ struct ToggleCarried: AppIntent {
 // TODO: Update casing of all file names
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> Entry {
-        .init(date: .init(), mealDate: nil, servingCount: nil, servingCarried: false)
+//        .init(date: .init(), mealDate: nil, servingCount: nil, servingCarried: false)
+        .init(date: .init(), mealDate: nil)
     }
     
     func getSnapshot(in context: Context, completion: @escaping (Entry) -> Void) {
@@ -73,7 +74,8 @@ struct Provider: TimelineProvider {
         let entry: Entry
         
         guard context.isPreview else { return }
-        entry = .init(date: date, mealDate: nil, servingCount: nil, servingCarried: false)
+//        entry = .init(date: date, mealDate: nil, servingCount: nil, servingCarried: false)
+        entry = .init(date: date, mealDate: nil)
         
         completion(entry)
     }
@@ -90,7 +92,8 @@ struct Provider: TimelineProvider {
         let meal = try? context.fetch(descriptor).first
         
         let date = Date.now
-        let entry = Entry(date: date, mealDate: meal?.startDate, servingCount: meal?.servings.count, servingCarried: ServingDefault.carried)
+//        let entry = Entry(date: date, mealDate: meal?.startDate, servingCount: meal?.servings.count, servingCarried: ServingDefault.carried)
+        let entry = Entry(date: date, mealDate: meal?.startDate)
         
         // Create the timeline with the entry and a reload policy with the date
         // for the next update.
@@ -112,8 +115,8 @@ struct Provider: TimelineProvider {
 struct Entry: TimelineEntry {
     let date: Date
     let mealDate: Date?
-    let servingCount: Int?
-    let servingCarried: Bool
+//    let servingCount: Int?
+//    let servingCarried: Bool
 }
 
 struct MainView: View {
@@ -129,33 +132,33 @@ struct MainView: View {
             if let mealDate = entry.mealDate {
                 Text(mealDate, style: .date)
                 Text(mealDate, style: .time)
-                Text("Servings: \(String(describing: entry.servingCount))")
-                Picker("Bowl Location", selection: $bowlLocation) {
-                    ForEach(BowlLocation.allCases) {
-                        Image(systemName: $0.icon).tag($0)
-                    }
-                }
-                .pickerStyle(.segmented)
-                HStack {
-                    Toggle(isOn: entry.servingCarried, intent: ToggleCarried()) {
-                        Label("Carried", systemImage: LouisLocation.Means.Kind.carried.icon)
-                    }
-                    .toggleStyle(.button)
-                    .labelStyle(.iconOnly)
-                    Toggle(isOn: $sleeping) {
-                        Label("Carried", systemImage: "moon.zzz")
-                    }
-                    .toggleStyle(.button)
-                    .labelStyle(.iconOnly)
-                    Toggle(isOn: $pets) {
-                        Label("Carried", systemImage: "pawprint")
-                    }
-                    .toggleStyle(.button)
-                    .labelStyle(.iconOnly)
-                    Button(intent: Serve()) {
-                        Image(systemName: "spoon.serving")
-                    }
-                }
+//                Text("Servings: \(String(describing: entry.servingCount))")
+//                Picker("Bowl Location", selection: $bowlLocation) {
+//                    ForEach(BowlLocation.allCases) {
+//                        Image(systemName: $0.icon).tag($0)
+//                    }
+//                }
+//                .pickerStyle(.segmented)
+//                HStack {
+//                    Toggle(isOn: entry.servingCarried, intent: ToggleCarried()) {
+//                        Label("Carried", systemImage: LouisLocation.Means.Kind.carried.icon)
+//                    }
+//                    .toggleStyle(.button)
+//                    .labelStyle(.iconOnly)
+//                    Toggle(isOn: $sleeping) {
+//                        Label("Carried", systemImage: "moon.zzz")
+//                    }
+//                    .toggleStyle(.button)
+//                    .labelStyle(.iconOnly)
+//                    Toggle(isOn: $pets) {
+//                        Label("Carried", systemImage: "pawprint")
+//                    }
+//                    .toggleStyle(.button)
+//                    .labelStyle(.iconOnly)
+//                    Button(intent: Serve()) {
+//                        Image(systemName: "spoon.serving")
+//                    }
+//                }
             }
             else {
                 Text("None")
@@ -196,8 +199,8 @@ struct Updater: Widget {
                 hour: 9,
                 minute: 0
             )
-        )!,
-        servingCount: 2,
-        servingCarried: false
+        )!
+//        servingCount: 2,
+//        servingCarried: false
     )
 }
