@@ -27,13 +27,13 @@ struct Serve: AppIntent {
             return .result()
         }
         
-        let louisLocation: LouisLocation
-        if ServingDefault.carried {
-            louisLocation = .here(.carried(sleeping: false))
-        }
-        else {
-            louisLocation = .here(.provisioned(sleeping: false))
-        }
+//        let louisLocation: LouisLocation
+//        if ServingDefault.carried {
+//            louisLocation = .here(.carried(sleeping: false))
+//        }
+//        else {
+//            louisLocation = .here(.provisioned(sleeping: false))
+//        }
         
 //        let serving = Serving(meal: meal, startDate: Date.now, pets: false, bowlLocation: .hall, louisLocation: louisLocation)
 //        context.insert(serving)
@@ -121,7 +121,7 @@ struct Entry: TimelineEntry {
 
 struct MainView: View {
     var entry: Provider.Entry
-    @State var bowlLocation: BowlLocation = .hall
+//    @State var bowlLocation: BowlLocation = .hall
     @State var carried: Bool = false
     @State var sleeping: Bool = false
     @State var pets: Bool = false

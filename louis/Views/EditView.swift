@@ -8,11 +8,22 @@
 import SwiftUI
 import SwiftData
 
-// I think I want a utility where form fields can be populated from a meal.
+// TODO: Ensure height of each row is uniform
+// TODO: Is there a better way to represent start/end weight for in-progress meals?
+// TODO: All previews should pull from the same sample data.
+
+// TODO: I think I want a utility where form fields can be populated from a meal. To avoid this redundant init.
+// TODO: We also want to add a warning if start weight is less than end weight,
+// like in FormView.
+// TODO: Changing water units when quantity is 0 allows you to save changes. 
 struct EditView: View {
-    @Environment(\.modelContext) private var context
+    
+    // MARK: API
+    
+    // TODO: Should Meal be a binding in case it's changed in the DB?
     var meal: Meal
-    @Environment(\.dismiss) private var dismiss
+    
+    // MARK: Init
     
     init(meal: Meal) {
         self.meal = meal
@@ -21,11 +32,15 @@ struct EditView: View {
         self._endWeight = State(wrappedValue: meal.endWeight)
         self._startWeight = State(wrappedValue: meal.startWeight)
         self._brand = State(wrappedValue: meal.brand)
-        self._waterQuantity = State(wrappedValue: meal.waterQuanitity)
-        self._waterUnits = State(wrappedValue: meal.waterUnits.symbol)
+        self._waterQuantity = State(wrappedValue: meal.waterQuantity)
+        self._waterUnits = State(wrappedValue: meal.waterUnits)
         self._fresh = State(wrappedValue: meal.fresh)
     }
     
+    // MARK: State
+    
+    @Environment(\.modelContext) private var context
+    @Environment(\.dismiss) private var dismiss
     
     @State private var startDate: Date
     @State private var endDate: Date?
@@ -33,12 +48,14 @@ struct EditView: View {
     @State private var startWeight: Double? // `TextField`s need optional bindings
     @State private var brand: Brand = .royalCanin(.chicken)
     @State private var waterQuantity: Double? // `TextField`s need optional bindings
-    @State private var waterUnits: String
+    @State private var waterUnits: UnitVolume
     @State private var fresh: Bool
     
-    @FocusState private var focus: FormField?
     @State private var alertState: AlertState?
     
+    @FocusState private var showKeyboard: Bool
+    
+    // TODO: Add alert (or warning, if applicable) when a field is missing
     enum AlertState {
         case invalidStartWeight
         case unsavedChanges
@@ -47,7 +64,7 @@ struct EditView: View {
         var title: String {
             switch self {
             case .invalidStartWeight:
-                return "Invalid start weight." // TODO: also ensure positive int
+                return "Invalid start weight."
             case .unsavedChanges:
                 return "Are you sure you want to discard your changes?"
             case .writeFailed:
@@ -56,7 +73,6 @@ struct EditView: View {
         }
     }
     
-    // Good candidate for an `Alertable` protocol
     var isAlertPresented: Binding<Bool> {
         Binding(
             get: { alertState != nil },
@@ -69,6 +85,8 @@ struct EditView: View {
             }
         )
     }
+    
+    // MARK: View
     
     var body: some View {
         NavigationStack {
@@ -85,40 +103,30 @@ struct EditView: View {
                         )
                     }
                 }
-//                .card()  maybe an issue
+                .card()
                 
-                // mention units?
                 Section {
-                    LabeledContent {
-                        TextField("Weight", value: $startWeight, format: .number)
-                    } label: {
-                        Text("Start weight")
+                    WeightTextField(label: "Start weight", weight: $startWeight)
+                        .focused($showKeyboard)
+                    // Only show `endWeight` if it's been input on the Mealtime
+                    // screen, for now.
+                    if endWeight != nil {
+                        WeightTextField(label: "End weight", weight: $endWeight)
+                            .focused($showKeyboard)
                     }
-//                        .focused(focusBinding, equals: .startWeight)
-                        .keyboardType(.decimalPad)
-                    LabeledContent {
-                        TextField("Weight", value: $endWeight, format: .number)
-                    } label: {
-                        Text("End weight")
-                    }
-                    //                        .focused(focusBinding, equals: .startWeight)
-                    .keyboardType(.decimalPad)
+                    
                 }
-                .multilineTextAlignment(.trailing)
-//                .card()
+                .card()
                 
-                CurrentMealView(
-                    editing: true,
+                MetadataFormView(
                     brand: $brand,
-//                    startDate: $startDate,
                     fresh: $fresh,
-                    // TODO: remember units for editing
                     waterQuantity: $waterQuantity,
                     waterUnits: $waterUnits,
                     startWeight: $startWeight,
-                    focusBinding: $focus
+                    showKeyboardBinding: $showKeyboard,
                 )
-//                .card()
+                .card()
             }
             .navigationTitle("Edit Meal")
             .toolbar {
@@ -126,7 +134,6 @@ struct EditView: View {
                     Button(role: .cancel) {
                         cancel()
                     }
-                    // TODO: show alert if changes have been made.
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button(role: .confirm) {
@@ -136,7 +143,7 @@ struct EditView: View {
                 }
             }
             .alert(
-                alertState?.title ?? "", // TODO
+                alertState.title,
                 isPresented: isAlertPresented,
                 presenting: alertState
             ) { state in
@@ -151,20 +158,20 @@ struct EditView: View {
                 }
             }
             .interactiveDismissDisabled(hasChanges)
+            .scrollContentBackground(.hidden)
         }
     }
     
     var hasChanges: Bool {
-        // Unfortunately, `Model()` implements `Equatable` using pointer identitiy.
-        // TODO: move to an extension
+        // Unfortunately, `Model()` implements `Equatable` using pointer identity.
         if
             startDate == meal.startDate,
             endDate == meal.endDate,
             startWeight == meal.startWeight,
             endWeight == meal.endWeight,
             brand == meal.brand,
-            waterQuantity == meal.waterQuanitity,
-            waterUnits == meal.waterUnits.symbol, // something weird with UnitVolume...
+            waterQuantity == meal.waterQuantity,
+            waterUnits == meal.waterUnits,
             fresh == meal.fresh
         {
             return false
@@ -174,35 +181,29 @@ struct EditView: View {
     
     
     func save() {
-        // TODO: Alert
         guard let startWeight else {
+            // TODO: This should also be presented if the startWeight is
+            // negative or 0
             alertState = .invalidStartWeight
             return
         }
         
-        // TODO: move to extension
         meal.startDate = startDate
         meal.endDate = endDate
         meal.startWeight = startWeight
         meal.endWeight = endWeight
         meal.brand = brand
-        meal.waterQuanitity = waterQuantity ?? 0
-        meal.waterUnits = .init(symbol: waterUnits)
+        meal.waterQuantity = waterQuantity ?? 0
+        meal.waterUnits = waterUnits
         meal.fresh = fresh
         
-        // The real tricky pattern is this could've changed in the DB. So maybe it should be a binding?
         do {
             try context.save()
-            print("saved")
             dismiss()
-            // dismiss
         }
         catch {
-            // TODO: figure out if I want to reuse or create my own alerts
             Task { @MainActor in alertState = .writeFailed }
         }
-        
-        
     }
     
     func cancel() {
@@ -215,10 +216,22 @@ struct EditView: View {
     }
 }
 
-#Preview {
-    EditView(meal: .init(startDate: Date.now, startWeight: 2, brand: .royalCanin(.fish), waterQuantity: 0, waterUnits: .tablespoons, fresh: false))
-    // Interesting, maybe different stuff needs to be used for water units? only two are supported in the UI.
+// TODO: Move to `Alertable` protocol.
+extension Optional<EditView.AlertState> {
+    var title: String { self?.title ?? "" }
 }
 
-// TODO: handle missing data in alert, etc.
-// also i seem to be missing water bindings
+#Preview {
+    EditView(
+        meal: .init(
+            startDate: Date.now - 3 * 60 * 60,
+            endDate: Date.now,
+            startWeight: 2,
+            endWeight: 5,
+            brand: .royalCanin(.fish),
+            waterQuantity: 0,
+            waterUnits: .tablespoons,
+            fresh: false
+        )
+    )
+}

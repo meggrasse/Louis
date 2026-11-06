@@ -8,35 +8,25 @@
 import SwiftUI
 import SwiftData
 
-// TODO: Consider sections and how to represent an in progress meal
-// TODO: seperate into subview properties
-
-// TODO: edit button turns into a checkmark
+// TODO: Better indication of an in-progress meal.
 
 struct RecordDetailView: View {
     @State var meal: Meal
     
+    // TODO: Stop edit button from turning into a checkmark when we present the sheet.
     @Environment(\.editMode) private var editMode
-    // hmm
-    @FocusState private var focus: FormField?
     
     var body: some View {
         NavigationStack {
             List {
                 Section {
                     LabeledContent {
-//                        if editMode?.wrappedValue.isEditing == true {
-//                            DatePicker(selection: $meal.startDate) { EmptyView() } // TODO: better pattern for hiding label?
-//                                .datePickerStyle(.wheel)
-//                        }
-//                        else {
-                            Text(
-                                meal.startDate.formatted(
-                                    date: .abbreviated,
-                                    time: .shortened
-                                )
+                        Text(
+                            meal.startDate.formatted(
+                                date: .abbreviated,
+                                time: .shortened
                             )
-//                        }
+                        )
                     } label: {
                         Text("Start time")
                     }
@@ -53,17 +43,15 @@ struct RecordDetailView: View {
                 }
                 Section {
                     LabeledContent {
-                        Text(meal.startWeight.formattedWeight + " " +  Meal.weightUnit.symbol)
+                        Text(meal.startWeight.displayWeight)
                     } label: {
                         Text("Start weight")
                     }
                     LabeledContent {
-                        // TODO: use pattern above?
                         if let endWeight = meal.endWeight {
-                            Text(endWeight.formattedWeight + " " +  Meal.weightUnit.symbol)
+                            Text(endWeight.displayWeight)
                         }
                         else {
-                            // TODO: nothing?
                             Text("None")
                         }
                     } label: {
@@ -76,9 +64,7 @@ struct RecordDetailView: View {
                     Text("Flavor")
                 }
                 LabeledContent {
-                    // TODO: rename formattedWeight. Or making a formatting
-                    // function with symbol
-                    Text(meal.waterQuanitity.formattedWeight + " " + meal.waterUnits.symbol)
+                    Text(meal.waterQuantity.displayVolume(with: meal.waterUnits))
                 } label: {
                     Text("Water")
                 }
@@ -102,8 +88,6 @@ struct RecordDetailView: View {
                 }
             ),
         ) {
-            // TODO: Add weights
-            // TODO: extension around water i think
             EditView(meal: meal)
         }
 
@@ -128,18 +112,3 @@ extension Bool {
         self ? "Yes" : "No"
     }
 }
-
-// TODO: vomit tracker
-
-//// TODO: is it wrong to use wrappedvalue here
-//extension Binding where Value == EditMode {
-//    var isPresenting: Binding<Bool> {
-//        Binding<Bool>(
-//            get: { self.wrappedValue.isEditing },
-//            set: { isPresenting in
-//                guard !isPresenting else { return }
-//                self.wrappedValue = .inactive
-//            }
-//        )
-//    }
-//}

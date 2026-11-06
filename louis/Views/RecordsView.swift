@@ -1,5 +1,5 @@
 //
-//  RecordView.swift
+//  RecordsView.swift
 //  louis
 //
 //  Created by Meg Grasse on 10/15/26.
@@ -9,21 +9,13 @@ import SwiftUI
 import SwiftData
 
 
-// TODO: Fix deletion animation
-// TODO: Add indicator for currently in progress view
+// TODO: Buggy deletion animation
+// TODO: Better indication of the currently in-progress meal.
 
-
-struct RecordView: View {
+struct RecordsView: View {
     @Environment(\.modelContext) private var context
+    // TODO: explore using the `sectionBy` option in iOS 27, by date.
     @Query(sort: \Meal.startDate) var meals: [Meal]
-
-    // TODO: Get section queries in macos27
-    // Dictionary workaround, including redundant date key, as `@Query` can't do sections yet.
-//    private var sections: [Date: [Meal]] {
-//        Dictionary(grouping: meals) {
-//            Calendar.current.startOfDay(for: $0.startDate)
-//        }
-//    }
     
     @State private var deletionMeal: Meal?
     
@@ -37,8 +29,8 @@ struct RecordView: View {
                     } label: {
                         Text("Meal Start: \(meal.startDate, format: .dateTime.day().month().hour().minute())")
                     }
-                    // `.onDelete` seems to remove the item from the UI.
-                    // TODO: comment
+                    // `.onDelete` doesn't allow you not to remove the item from the UI.
+                    // Opt for `.swipeActions` so we can add a confirmation dialogue.
                     .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                         Button(role: .destructive) {
                             deletionMeal = meal
@@ -62,11 +54,12 @@ struct RecordView: View {
                 Button("Delete", role: .destructive) {
                     context.delete(meal)
                     do { try context.save() }
-                    catch { fatalError() } // TODO: real error handling
+                    catch {
+                        // TODO: Add a write actions alert. Or maybe we should just use a fatal error?
+                        fatalError()
+                    }
                 }
-                Button("Cancel", role: .cancel) {
-                    // no-op
-                }
+                Button("Cancel", role: .cancel) {}
             }
             .navigationTitle("Records")
         }
@@ -74,7 +67,7 @@ struct RecordView: View {
 }
 
 #Preview {
-    RecordView()
+    RecordsView()
         .modelContainer(SampleData.shared.modelContainer)
 }
 
@@ -102,9 +95,9 @@ class SampleData {
         }
     }
     
-    private static let Meals = [
+    private static let Meals: [Meal] = [
         Meal(
-            startDate: Date.now - 3 * 60 * 60, // TODO: clean up
+            startDate: Date.now - 3 * 60 * 60,
             endDate: Date.now,
             startWeight: 5,
             endWeight: 3,
